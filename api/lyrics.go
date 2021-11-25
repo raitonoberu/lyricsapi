@@ -1,4 +1,4 @@
-package main
+package handler
 
 import (
 	"encoding/json"
@@ -55,9 +55,4 @@ func Lyrics(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(statusCode)
 	json.NewEncoder(w).Encode(result)
-}
-
-func main() {
-	http.HandleFunc("/lyrics", Lyrics)
-	log.Fatal(http.ListenAndServe(":8080", nil))
 }
