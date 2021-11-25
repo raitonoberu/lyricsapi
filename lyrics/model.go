@@ -1,4 +1,4 @@
-package lyricsapi
+package lyrics
 
 type ColorLyrics struct {
 	Lyrics          *LyricsInfo `json:"lyrics"`

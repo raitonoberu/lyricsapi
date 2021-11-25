@@ -1,4 +1,4 @@
-package lyricsapi
+package lyrics
 
 import (
 	"encoding/json"

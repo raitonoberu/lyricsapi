@@ -7,10 +7,10 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/raitonoberu/lyricsapi"
+	"github.com/raitonoberu/lyricsapi/lyrics"
 )
 
-var api = lyricsapi.NewLyricsApi(os.Getenv("COOKIE"))
+var api = lyrics.NewLyricsApi(os.Getenv("COOKIE"))
 
 type Result struct {
 	Lines []*lyricsLine `json:"lines,omitempty"`
@@ -25,7 +25,7 @@ type lyricsLine struct {
 func Lyrics(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 
-	var lyrics *lyricsapi.ColorLyrics
+	var lyrics *lyrics.ColorLyrics
 	var err error
 	if id, ok := query["id"]; ok && len(id) != 0 {
 		lyrics, err = api.Get(id[0])
