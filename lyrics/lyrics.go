@@ -143,7 +143,7 @@ func (l *LyricsApi) updateToken() error {
 	}
 
 	l.token = result.AccessToken
-	l.expiresIn = time.UnixMilli(result.ExpiresIn)
+	l.expiresIn = time.Unix(0, result.ExpiresIn*int64(time.Millisecond))
 
 	return nil
 }
