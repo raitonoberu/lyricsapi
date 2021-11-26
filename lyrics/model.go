@@ -16,6 +16,6 @@ type ColorsInfo struct {
 	HighlightText int `json:"highlightText"`
 }
 type LyricsLine struct {
-	StartTimeMs int    `json:"startTimeMs,string"`
+	StartTimeMs int64  `json:"startTimeMs,string"`
 	Words       string `json:"words"`
 }

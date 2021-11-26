@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 
 	"github.com/raitonoberu/lyricsapi/lyrics"
 )
@@ -18,7 +17,7 @@ type Result struct {
 }
 
 type lyricsLine struct {
-	Time  int    `json:"time"`
+	Time  int64  `json:"time"`
 	Words string `json:"words"`
 }
 
@@ -44,9 +43,8 @@ func Lyrics(w http.ResponseWriter, r *http.Request) {
 	if lyrics != nil {
 		result.Lines = make([]*lyricsLine, len(lyrics.Lyrics.Lines))
 		for i, l := range lyrics.Lyrics.Lines {
-			time, _ := strconv.Atoi(l.StartTimeMs)
 			result.Lines[i] = &lyricsLine{
-				Time:  time,
+				Time:  l.StartTimeMs,
 				Words: l.Words,
 			}
 		}
