@@ -1,5 +1,5 @@
 # lyricsapi
-Go package and server application for extracting time-stamped texts from Spotify.
+Go package and server app for retrieving time-stamped lyrics from Spotify.
 
 ## Usage
 
