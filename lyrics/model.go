@@ -1,13 +1,13 @@
 package lyrics
 
-type ColorLyrics struct {
+type LyricsResult struct {
 	Lyrics *LyricsInfo `json:"lyrics"`
 	Colors *ColorsInfo `json:"colors"`
 }
 
 type LyricsInfo struct {
-	SyncType string        `json:"syncType"`
-	Lines    []*LyricsLine `json:"lines"`
+	SyncType string       `json:"syncType"`
+	Lines    []LyricsLine `json:"lines"`
 }
 
 type ColorsInfo struct {
@@ -15,7 +15,8 @@ type ColorsInfo struct {
 	Text          int `json:"text"`
 	HighlightText int `json:"highlightText"`
 }
+
 type LyricsLine struct {
-	StartTimeMs int64  `json:"startTimeMs,string"`
-	Words       string `json:"words"`
+	Time  int    `json:"startTimeMs,string"`
+	Words string `json:"words"`
 }

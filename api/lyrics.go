@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -12,15 +11,16 @@ import (
 
 var api = lyrics.NewLyricsApi(os.Getenv("COOKIE"))
 
+// to change the json tag from "startTimeMs" to "time"
 type lyricsLine struct {
-	Time  int64  `json:"time"`
+	Time  int    `json:"time"`
 	Words string `json:"words"`
 }
 
 func Lyrics(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 
-	var lyrics *lyrics.ColorLyrics
+	var lyrics *lyrics.LyricsResult
 	var err error
 	if id, ok := query["id"]; ok && len(id) != 0 {
 		log.Println("[INFO] Getting lyrics for ID", id)
@@ -38,17 +38,9 @@ func Lyrics(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("content-type", "application/json; charset=utf-8")
 
-	if lyrics == nil {
-		fmt.Fprint(w, "[]")
-		return
-	}
-
-	lines := make([]*lyricsLine, len(lyrics.Lyrics.Lines))
+	lines := make([]lyricsLine, len(lyrics.Lyrics.Lines))
 	for i, l := range lyrics.Lyrics.Lines {
-		lines[i] = &lyricsLine{
-			Time:  l.StartTimeMs,
-			Words: l.Words,
-		}
+		lines[i] = lyricsLine(l)
 	}
 	json.NewEncoder(w).Encode(lines)
 }

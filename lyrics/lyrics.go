@@ -32,7 +32,7 @@ type LyricsApi struct {
 	expiresIn time.Time
 }
 
-func (l *LyricsApi) GetByName(query string) (*ColorLyrics, error) {
+func (l *LyricsApi) GetByName(query string) (*LyricsResult, error) {
 	err := l.checkToken()
 	if err != nil {
 		return nil, err
@@ -63,7 +63,7 @@ func (l *LyricsApi) GetByName(query string) (*ColorLyrics, error) {
 	return l.Get(result.Tracks.Items[0].ID)
 }
 
-func (l *LyricsApi) Get(spotifyID string) (*ColorLyrics, error) {
+func (l *LyricsApi) Get(spotifyID string) (*LyricsResult, error) {
 	err := l.checkToken()
 	if err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func (l *LyricsApi) Get(spotifyID string) (*ColorLyrics, error) {
 	}
 	defer resp.Body.Close()
 
-	result := &ColorLyrics{}
+	result := &LyricsResult{}
 	err = json.NewDecoder(resp.Body).Decode(result)
 	if err != nil {
 		if err == io.EOF {
