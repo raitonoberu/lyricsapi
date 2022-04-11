@@ -32,7 +32,7 @@ func main() {
 		return
 	}
 	for _, line := range lyrics.Lyrics.Lines {
-		t := time.UnixMilli(line.StartTimeMs).Format("04:05")
+		t := time.UnixMilli(line.Time).Format("04:05")
 		fmt.Println(t, line.Words)
 	}
 
