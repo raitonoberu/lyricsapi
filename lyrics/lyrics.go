@@ -3,6 +3,7 @@ package lyrics
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -88,6 +89,10 @@ func (l *LyricsApi) Get(spotifyID string) (*ColorLyrics, error) {
 	result := &ColorLyrics{}
 	err = json.NewDecoder(resp.Body).Decode(result)
 	if err != nil {
+		if err == io.EOF {
+			// no lyrics
+			return nil, nil
+		}
 		return nil, err
 	}
 	if result.Lyrics == nil {
