@@ -36,6 +36,8 @@ func Lyrics(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	w.Header().Set("content-type", "application/json; charset=utf-8")
+
 	if lyrics == nil {
 		fmt.Fprint(w, "[]")
 		return
