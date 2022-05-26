@@ -38,9 +38,15 @@ func Lyrics(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("content-type", "application/json; charset=utf-8")
 
-	lines := make([]lyricsLine, len(lyrics.Lyrics.Lines))
-	for i, l := range lyrics.Lyrics.Lines {
-		lines[i] = lyricsLine(l)
+	if lyrics != nil {
+		w.Header().Set("Cache-Control", "s-maxage=86400")
+
+		lines := make([]lyricsLine, len(lyrics.Lyrics.Lines))
+		for i, l := range lyrics.Lyrics.Lines {
+			lines[i] = lyricsLine(l)
+		}
+		json.NewEncoder(w).Encode(lines)
+	} else {
+		w.Write([]byte("[]"))
 	}
-	json.NewEncoder(w).Encode(lines)
 }
