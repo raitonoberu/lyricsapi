@@ -20,7 +20,7 @@ import (
 )
 
 func main() {
-	api := lyrics.NewLyricsApi("<YOUR COOKIE>")
+	api := lyrics.NewLyricsApi(`<YOUR COOKIE>`)
 	lyrics, err := api.GetByName("Rick Astley Never Gonna Give You Up")
 	// Alternatively, specify the track id:
 	// lyrics, err := api.Get("4uLU6hMCjMI75M1A2tKUQC")
@@ -32,7 +32,7 @@ func main() {
 		return
 	}
 	for _, line := range lyrics.Lyrics.Lines {
-		t := time.UnixMilli(line.Time).Format("04:05")
+		t := time.UnixMilli(int64(line.Time)).Format("04:05")
 		fmt.Println(t, line.Words)
 	}
 
