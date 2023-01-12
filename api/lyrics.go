@@ -24,13 +24,13 @@ func Lyrics(w http.ResponseWriter, r *http.Request) {
 
 	var lyrics *lyrics.LyricsResult
 	var err error
-	if id, ok := query["id"]; ok && len(id) != 0 {
+	if id, ok := query["id"]; ok && len(id) != 0 && len(id[0]) != 0 {
 		log.Println("[INFO] Getting lyrics for ID", id)
 		lyrics, err = api.Get(id[0])
 		if err != nil {
 			log.Println("[ERROR]", err.Error(), id)
 		}
-	} else if name, ok := query["name"]; ok && len(name) != 0 {
+	} else if name, ok := query["name"]; ok && len(name) != 0 && len(name[0]) != 0 {
 		log.Println("[INFO] Getting lyrics for query", name)
 		lyrics, err = api.GetByName(name[0])
 		if err != nil {
