@@ -2,9 +2,11 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/raitonoberu/lyricsapi/lyrics"
 )
@@ -36,6 +38,15 @@ func Lyrics(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if lrc, ok := query["lrc"]; ok && len(lrc) != 0 && lrc[0] == "1" {
+		writeLrc(w, lyrics)
+	} else {
+		writeJson(w, lyrics)
+	}
+
+}
+
+func writeJson(w http.ResponseWriter, lyrics *lyrics.LyricsResult) {
 	w.Header().Set("content-type", "application/json; charset=utf-8")
 
 	if lyrics != nil {
@@ -48,5 +59,21 @@ func Lyrics(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(lines)
 	} else {
 		w.Write([]byte("[]"))
+	}
+}
+
+func writeLrc(w http.ResponseWriter, lyrics *lyrics.LyricsResult) {
+	w.Header().Set("content-type", "text/plain; charset=utf-8")
+
+	if lyrics != nil {
+		w.Header().Set("Cache-Control", "s-maxage=86400")
+
+		lines := make([]string, len(lyrics.Lyrics.Lines))
+		for i, l := range lyrics.Lyrics.Lines {
+			lines[i] = fmt.Sprintf("[%d:%d.%d]%s", l.Time/60000, (l.Time/1000)%60, l.Time%1000, l.Words)
+		}
+		w.Write([]byte(strings.Join(lines, "\n")))
+	} else {
+		w.Write([]byte(""))
 	}
 }
