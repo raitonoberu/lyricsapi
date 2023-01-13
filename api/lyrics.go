@@ -70,7 +70,8 @@ func writeLrc(w http.ResponseWriter, lyrics *lyrics.LyricsResult) {
 
 		lines := make([]string, len(lyrics.Lyrics.Lines))
 		for i, l := range lyrics.Lyrics.Lines {
-			lines[i] = fmt.Sprintf("[%02d:%02d.%03d]%s", l.Time/60000, (l.Time%60000)/1000, l.Time%1000, l.Words)
+			// [mm:ss.xx]
+			lines[i] = fmt.Sprintf("[%02d:%02d.%02d]%s", l.Time/60000, (l.Time%60000)/1000, (l.Time%1000)/10, l.Words)
 		}
 		w.Write([]byte(strings.Join(lines, "\n")))
 	} else {
