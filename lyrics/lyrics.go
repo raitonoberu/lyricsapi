@@ -11,6 +11,7 @@ import (
 
 var (
 	ErrInvalidCookie = errors.New("invalid cookie provided")
+	ErrNoToken       = errors.New("could not get token")
 )
 
 const tokenUrl = "https://open.spotify.com/get_access_token?reason=transport&productType=web_player"
@@ -33,8 +34,7 @@ type LyricsApi struct {
 }
 
 func (l *LyricsApi) GetByName(query string) (*LyricsResult, error) {
-	err := l.checkToken()
-	if err != nil {
+	if err := l.checkToken(); err != nil {
 		return nil, err
 	}
 
@@ -60,12 +60,11 @@ func (l *LyricsApi) GetByName(query string) (*LyricsResult, error) {
 		return nil, nil
 	}
 
-	return l.Get(result.Tracks.Items[0].ID)
+	return l.GetByID(result.Tracks.Items[0].ID)
 }
 
-func (l *LyricsApi) Get(spotifyID string) (*LyricsResult, error) {
-	err := l.checkToken()
-	if err != nil {
+func (l *LyricsApi) GetByID(spotifyID string) (*LyricsResult, error) {
+	if err := l.checkToken(); err != nil {
 		return nil, err
 	}
 
@@ -90,14 +89,11 @@ func (l *LyricsApi) Get(spotifyID string) (*LyricsResult, error) {
 	err = json.NewDecoder(resp.Body).Decode(result)
 	if err != nil {
 		if err == io.EOF {
-			// no lyrics
+			// this is thrown when the ID is invalid
+			// or when the track has no lyrics
 			return nil, nil
 		}
 		return nil, err
-	}
-	if result.Lyrics == nil {
-		// not found
-		return nil, nil
 	}
 	return result, nil
 }
@@ -142,14 +138,12 @@ func (l *LyricsApi) updateToken() error {
 	if result.IsAnonymous {
 		return ErrInvalidCookie
 	}
-
 	if result.AccessToken == "" {
-		return errors.New("couldn't get access token")
+		return ErrNoToken
 	}
 
 	l.token = result.AccessToken
 	l.expiresIn = time.Unix(0, result.ExpiresIn*int64(time.Millisecond))
-
 	return nil
 }
 
