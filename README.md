@@ -357,7 +357,7 @@ curl -s "https://yourapp.vercel.app/api/lyrics?id=4uLU6hMCjMI75M1A2tKUQC" | jq
 ```
 </details>
 
-Pass `lrc=1` to get lyrics in [.lrc](https://en.wikipedia.org/wiki/LRC_(file_format)) file format. Pass `color=1` to get primary color in header's `color` field.
+In header's `color` field you can find the primary color of the track. Pass `lrc=1` to get lyrics in [.lrc](https://en.wikipedia.org/wiki/LRC_(file_format)) file format.
 
 ### Where do I get cookie?
 

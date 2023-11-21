@@ -87,11 +87,8 @@ func writeHeader(
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	if query.Get("color") == "1" {
-		w.Header().Set("color", fmt.Sprintf(
-			"#%X", lyrics.Colors.Background+0x1000000,
-		))
-	}
+	w.Header().Set("color",
+		fmt.Sprintf("#%X", lyrics.Colors.Background+0x1000000),
+	)
 	w.WriteHeader(http.StatusOK)
-
 }
