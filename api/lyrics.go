@@ -85,7 +85,13 @@ func writeHeader(
 	w.Header().Set("Cache-Control", "s-maxage=86400")
 	if lyrics == nil {
 		w.WriteHeader(http.StatusNotFound)
-	} else {
-		w.WriteHeader(http.StatusOK)
+		return
 	}
+	if query.Get("color") == "1" {
+		w.Header().Set("color", fmt.Sprintf(
+			"#%X", lyrics.Colors.Background+0x1000000,
+		))
+	}
+	w.WriteHeader(http.StatusOK)
+
 }

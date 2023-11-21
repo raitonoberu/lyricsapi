@@ -29,4 +29,7 @@ type ColorsInfo struct {
 	Background    int `json:"background"`
 	Text          int `json:"text"`
 	HighlightText int `json:"highlightText"`
+	// add 0x1000000 to this value to get the color. currently
+	// only background is dynamic; text and highlightText
+	// contain constant values -16777216 and -1 (black and white)
 }
