@@ -21,12 +21,9 @@ import (
 
 func main() {
 	api := lyrics.NewLyricsApi(`<YOUR COOKIE>`)
-	lyrics, err := api.GetByName("Rick Astley Never Gonna Give You Up")
+	lyrics, _ := api.GetByName("Rick Astley Never Gonna Give You Up")
 	// Alternatively, specify the track id:
-	// lyrics, err := api.Get("4uLU6hMCjMI75M1A2tKUQC")
-	if err != nil {
-		panic(err)
-	}
+	// lyrics, _ := api.GetByID("4uLU6hMCjMI75M1A2tKUQC")
 	if lyrics == nil {
 		fmt.Println("Not found")
 		return
@@ -108,6 +105,257 @@ func main() {
 
 1. https://vercel.com/docs/get-started
 2. Set "COOKIE" enviroment variable.
+
+```bash
+# by name
+curl -s "https://yourapp.vercel.app/api/lyrics?name=Rick%20Astley%20Never%20Gonna%20Give%20You%20Up" | jq
+# by id
+curl -s "https://yourapp.vercel.app/api/lyrics?id=4uLU6hMCjMI75M1A2tKUQC" | jq
+```
+
+<details>
+
+```json
+[
+  {
+    "time": 19670,
+    "words": "We're no strangers to love"
+  },
+  {
+    "time": 23560,
+    "words": "You know the rules and so do I (do I)"
+  },
+  {
+    "time": 27920,
+    "words": "A full commitment's what I'm thinking of"
+  },
+  {
+    "time": 32110,
+    "words": "You wouldn't get this from any other guy"
+  },
+  {
+    "time": 36050,
+    "words": "I just wanna tell you how I'm feeling"
+  },
+  {
+    "time": 41340,
+    "words": "Gotta make you understand"
+  },
+  {
+    "time": 43180,
+    "words": "Never gonna give you up"
+  },
+  {
+    "time": 45250,
+    "words": "Never gonna let you down"
+  },
+  {
+    "time": 47290,
+    "words": "Never gonna run around and desert you"
+  },
+  {
+    "time": 51520,
+    "words": "Never gonna make you cry"
+  },
+  {
+    "time": 53780,
+    "words": "Never gonna say goodbye"
+  },
+  {
+    "time": 55730,
+    "words": "Never gonna tell a lie and hurt you"
+  },
+  {
+    "time": 60980,
+    "words": "We've known each other for so long"
+  },
+  {
+    "time": 64960,
+    "words": "Your heart's been aching, but you're too shy to say it (say it)"
+  },
+  {
+    "time": 69230,
+    "words": "Inside, we both know what's been going on (going on)"
+  },
+  {
+    "time": 73670,
+    "words": "We know the game and we're gonna play it"
+  },
+  {
+    "time": 77570,
+    "words": "And if you ask me how I'm feeling"
+  },
+  {
+    "time": 82450,
+    "words": "Don't tell me you're too blind to see"
+  },
+  {
+    "time": 85460,
+    "words": "Never gonna give you up"
+  },
+  {
+    "time": 87560,
+    "words": "Never gonna let you down"
+  },
+  {
+    "time": 89750,
+    "words": "Never gonna run around and desert you"
+  },
+  {
+    "time": 93960,
+    "words": "Never gonna make you cry"
+  },
+  {
+    "time": 96220,
+    "words": "Never gonna say goodbye"
+  },
+  {
+    "time": 98290,
+    "words": "Never gonna tell a lie and hurt you"
+  },
+  {
+    "time": 102330,
+    "words": "Never gonna give you up"
+  },
+  {
+    "time": 104450,
+    "words": "Never gonna let you down"
+  },
+  {
+    "time": 106640,
+    "words": "Never gonna run around and desert you"
+  },
+  {
+    "time": 110980,
+    "words": "Never gonna make you cry"
+  },
+  {
+    "time": 112830,
+    "words": "Never gonna say goodbye"
+  },
+  {
+    "time": 115130,
+    "words": "Never gonna tell a lie and hurt you"
+  },
+  {
+    "time": 119850,
+    "words": "(Ooh, give you up)"
+  },
+  {
+    "time": 124010,
+    "words": "(Ooh, give you up)"
+  },
+  {
+    "time": 128580,
+    "words": "(Ooh) Never gonna give, never gonna give (give you up)"
+  },
+  {
+    "time": 132580,
+    "words": "(Ooh) Never gonna give, never gonna give (give you up)"
+  },
+  {
+    "time": 137020,
+    "words": "We've known each other for so long"
+  },
+  {
+    "time": 141230,
+    "words": "Your heart's been aching, but you're too shy to say it (to say it)"
+  },
+  {
+    "time": 145520,
+    "words": "Inside, we both know what's been going on (going on)"
+  },
+  {
+    "time": 149810,
+    "words": "We know the game and we're gonna play it"
+  },
+  {
+    "time": 153900,
+    "words": "I just wanna tell you how I'm feeling"
+  },
+  {
+    "time": 159110,
+    "words": "Gotta make you understand"
+  },
+  {
+    "time": 161730,
+    "words": "Never gonna give you up"
+  },
+  {
+    "time": 163970,
+    "words": "Never gonna let you down"
+  },
+  {
+    "time": 165950,
+    "words": "Never gonna run around and desert you"
+  },
+  {
+    "time": 170220,
+    "words": "Never gonna make you cry"
+  },
+  {
+    "time": 172220,
+    "words": "Never gonna say goodbye"
+  },
+  {
+    "time": 174380,
+    "words": "Never gonna tell a lie and hurt you"
+  },
+  {
+    "time": 178590,
+    "words": "Never gonna give you up"
+  },
+  {
+    "time": 180700,
+    "words": "Never gonna let you down"
+  },
+  {
+    "time": 182830,
+    "words": "Never gonna run around and desert you"
+  },
+  {
+    "time": 187260,
+    "words": "Never gonna make you cry"
+  },
+  {
+    "time": 189260,
+    "words": "Never gonna say goodbye"
+  },
+  {
+    "time": 191390,
+    "words": "Never gonna tell a lie and hurt you"
+  },
+  {
+    "time": 195520,
+    "words": "Never gonna give you up"
+  },
+  {
+    "time": 197680,
+    "words": "Never gonna let you down"
+  },
+  {
+    "time": 199880,
+    "words": "Never gonna run around and desert you"
+  },
+  {
+    "time": 204060,
+    "words": "Never gonna make you cry"
+  },
+  {
+    "time": 206230,
+    "words": "Never gonna say goodbye"
+  },
+  {
+    "time": 208340,
+    "words": "Never gonna tell a lie and hurt you"
+  },
+  {
+    "time": 210980,
+    "words": ""
+  }
+]
+```
+</details>
 
 ### Where do I get cookie?
 
