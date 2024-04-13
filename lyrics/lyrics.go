@@ -17,6 +17,7 @@ var (
 const tokenUrl = "https://open.spotify.com/get_access_token?reason=transport&productType=web_player"
 const lyricsUrl = "https://spclient.wg.spotify.com/color-lyrics/v2/track/"
 const searchUrl = "https://api.spotify.com/v1/search?"
+const userAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0"
 
 func NewLyricsApi(cookie string) *LyricsApi {
 	return &LyricsApi{
@@ -76,8 +77,8 @@ func (l *LyricsApi) GetByID(spotifyID string) (*LyricsResult, error) {
 		"accept-language":  {"en"},
 		"app-platform":     {"WebPlayer"},
 		"sec-ch-ua-mobile": {"?0"},
-
-		"Authorization": {"Bearer " + l.token},
+		"user-agent":       {userAgent},
+		"Authorization":    {"Bearer " + l.token},
 	}
 	resp, err := l.Client.Do(req)
 	if err != nil {
@@ -121,6 +122,7 @@ func (l *LyricsApi) updateToken() error {
 		"sec-fetch-mode":      {"cors"},
 		"sec-fetch-site":      {"same-origin"},
 		"spotify-app-version": {"1.1.54.35.ge9dace1d"},
+		"user-agent":          {userAgent},
 		"cookie":              {l.cookie},
 	}
 	resp, err := l.Client.Do(req)
