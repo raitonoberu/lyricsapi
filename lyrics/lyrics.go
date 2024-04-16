@@ -14,10 +14,13 @@ var (
 	ErrNoToken       = errors.New("could not get token")
 )
 
-const tokenUrl = "https://open.spotify.com/get_access_token?reason=transport&productType=web_player"
-const lyricsUrl = "https://spclient.wg.spotify.com/color-lyrics/v2/track/"
-const searchUrl = "https://api.spotify.com/v1/search?"
-const userAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0"
+const (
+	tokenUrl  = "https://open.spotify.com/get_access_token?reason=transport&productType=web_player"
+	lyricsUrl = "https://spclient.wg.spotify.com/color-lyrics/v2/track/"
+	searchUrl = "https://api.spotify.com/v1/search?"
+	stateUrl  = "https://api.spotify.com/v1/me/player/currently-playing"
+	userAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0"
+)
 
 func NewLyricsApi(cookie string) *LyricsApi {
 	return &LyricsApi{
@@ -92,6 +95,31 @@ func (l *LyricsApi) GetByID(spotifyID string) (*LyricsResult, error) {
 		if err == io.EOF {
 			// this is thrown when the ID is invalid
 			// or when the track has no lyrics
+			return nil, nil
+		}
+		return nil, err
+	}
+	return result, nil
+}
+
+func (l *LyricsApi) State() (*StateResult, error) {
+	if err := l.checkToken(); err != nil {
+		return nil, err
+	}
+
+	req, _ := http.NewRequest("GET", stateUrl, nil)
+	req.Header.Set("Authorization", "Bearer "+l.token)
+	resp, err := l.Client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	result := &StateResult{}
+	err = json.NewDecoder(resp.Body).Decode(result)
+	if err != nil {
+		if err == io.EOF {
+			// stopped
 			return nil, nil
 		}
 		return nil, err
