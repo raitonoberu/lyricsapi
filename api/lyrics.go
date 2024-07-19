@@ -1,4 +1,4 @@
-package handler
+package api
 
 import (
 	"encoding/json"
@@ -17,7 +17,7 @@ var api = lyrics.NewLyricsApi(os.Getenv("COOKIE"))
 func Lyrics(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 
-	var lyrics *lyrics.LyricsResult
+	var lyrics []lyrics.LyricsLine
 	var err error
 	if id := query.Get("id"); len(id) != 0 {
 		log.Println("[INFO] Getting lyrics for ID:", id)
@@ -40,34 +40,33 @@ func Lyrics(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func writeJson(w http.ResponseWriter, lyrics *lyrics.LyricsResult) {
+func writeJson(w http.ResponseWriter, lyrics []lyrics.LyricsLine) {
 	if lyrics == nil {
 		w.Write([]byte("[]"))
 		return
 	}
 	// [{"time":1000,"words":"words"}, ...]
-	json.NewEncoder(w).Encode(lyrics.Lyrics.Lines)
+	json.NewEncoder(w).Encode(lyrics)
 }
 
-func writeLrc(w http.ResponseWriter, lyrics *lyrics.LyricsResult) {
+func writeLrc(w http.ResponseWriter, lyrics []lyrics.LyricsLine) {
 	if lyrics == nil {
 		w.Write([]byte(""))
 		return
 	}
 
-	lines := make([]string, len(lyrics.Lyrics.Lines))
-	for i, l := range lyrics.Lyrics.Lines {
+	lines := make([]string, len(lyrics))
+	for i, l := range lyrics {
+		// [mm:ss.xx]words
 		lines[i] = fmt.Sprintf("[%02d:%02d.%02d]%s", l.Time/60000, (l.Time%60000)/1000, (l.Time%1000)/10, l.Words)
 	}
-	// [mm:ss.xx]words
-	// ...
 	w.Write([]byte(strings.Join(lines, "\n")))
 }
 
 func writeHeader(
 	w http.ResponseWriter,
 	query url.Values,
-	lyrics *lyrics.LyricsResult,
+	lyrics []lyrics.LyricsLine,
 	err error,
 ) {
 	if query.Get("lrc") == "1" {
@@ -83,12 +82,9 @@ func writeHeader(
 	}
 
 	w.Header().Set("Cache-Control", "s-maxage=86400")
-	if lyrics == nil {
+	if len(lyrics) == 0 {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	w.Header().Set("color",
-		fmt.Sprintf("#%X", lyrics.Colors.Background+0x1000000),
-	)
 	w.WriteHeader(http.StatusOK)
 }

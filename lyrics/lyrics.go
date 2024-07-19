@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -20,6 +22,9 @@ const (
 	searchUrl = "https://api.spotify.com/v1/search?"
 	stateUrl  = "https://api.spotify.com/v1/me/player/currently-playing"
 	userAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0"
+
+	lrclibUrl       = "https://lrclib.net/api/get?"
+	lrclibUserAgent = "lyricsapi v0.1.0 (https://github.com/raitonoberu/lyricsapi)"
 )
 
 func NewLyricsApi(cookie string) *LyricsApi {
@@ -37,7 +42,55 @@ type LyricsApi struct {
 	expiresIn time.Time
 }
 
-func (l *LyricsApi) GetByName(query string) (*LyricsResult, error) {
+func (l *LyricsApi) GetByName(query string) ([]LyricsLine, error) {
+	track, err := l.FindTrack(query)
+	if err != nil {
+		return nil, err
+	}
+	if l.cookie != "" {
+		// use spotify to get lyrics
+		// if you don't have a premium account, it will only be first 5 lines
+		return l.GetByID(track.ID)
+	}
+	return l.getFromLrclib(track)
+}
+
+func (l *LyricsApi) GetByID(spotifyID string) ([]LyricsLine, error) {
+	if err := l.checkToken(); err != nil {
+		return nil, err
+	}
+
+	req, _ := http.NewRequest("GET", lyricsUrl+spotifyID, nil)
+	req.Header = http.Header{
+		"referer":          {"https://open.spotify.com/"},
+		"origin":           {"https://open.spotify.com/"},
+		"accept":           {"application/json"},
+		"accept-language":  {"en"},
+		"app-platform":     {"WebPlayer"},
+		"sec-ch-ua-mobile": {"?0"},
+		"user-agent":       {userAgent},
+		"Authorization":    {"Bearer " + l.token},
+	}
+	resp, err := l.Client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	result := &lyricsResult{}
+	err = json.NewDecoder(resp.Body).Decode(result)
+	if err != nil {
+		if err == io.EOF {
+			// this is thrown when the ID is invalid
+			// or when the track has no lyrics
+			return nil, nil
+		}
+		return nil, err
+	}
+	return result.Lyrics.Lines, nil
+}
+
+func (l *LyricsApi) FindTrack(query string) (*Track, error) {
 	if err := l.checkToken(); err != nil {
 		return nil, err
 	}
@@ -63,43 +116,7 @@ func (l *LyricsApi) GetByName(query string) (*LyricsResult, error) {
 	if result.Tracks.Total == 0 {
 		return nil, nil
 	}
-
-	return l.GetByID(result.Tracks.Items[0].ID)
-}
-
-func (l *LyricsApi) GetByID(spotifyID string) (*LyricsResult, error) {
-	if err := l.checkToken(); err != nil {
-		return nil, err
-	}
-
-	req, _ := http.NewRequest("GET", lyricsUrl+spotifyID, nil)
-	req.Header = http.Header{
-		"referer":          {"https://open.spotify.com/"},
-		"origin":           {"https://open.spotify.com/"},
-		"accept":           {"application/json"},
-		"accept-language":  {"en"},
-		"app-platform":     {"WebPlayer"},
-		"sec-ch-ua-mobile": {"?0"},
-		"user-agent":       {userAgent},
-		"Authorization":    {"Bearer " + l.token},
-	}
-	resp, err := l.Client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	result := &LyricsResult{}
-	err = json.NewDecoder(resp.Body).Decode(result)
-	if err != nil {
-		if err == io.EOF {
-			// this is thrown when the ID is invalid
-			// or when the track has no lyrics
-			return nil, nil
-		}
-		return nil, err
-	}
-	return result, nil
+	return result.Tracks.Items[0], nil
 }
 
 func (l *LyricsApi) State() (*StateResult, error) {
@@ -125,6 +142,28 @@ func (l *LyricsApi) State() (*StateResult, error) {
 		return nil, err
 	}
 	return result, nil
+}
+
+func (l *LyricsApi) getFromLrclib(t *Track) ([]LyricsLine, error) {
+	url := lrclibUrl + url.Values{
+		"track_name":  {t.Name},
+		"artist_name": {t.Artists[0].Name}, // we probably should add all artists
+		"album_name":  {t.Album.Name},
+		"duration":    {strconv.Itoa(t.DurationMs / 1000)},
+	}.Encode()
+	req, _ := http.NewRequest("GET", url, nil)
+	resp, err := l.Client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	result := &lrclibResult{}
+	err = json.NewDecoder(resp.Body).Decode(result)
+	if err != nil {
+		return nil, err
+	}
+	return result.Parse(), nil
 }
 
 func (l *LyricsApi) checkToken() error {
@@ -165,7 +204,7 @@ func (l *LyricsApi) updateToken() error {
 		return err
 	}
 
-	if result.IsAnonymous {
+	if l.cookie != "" && result.IsAnonymous {
 		return ErrInvalidCookie
 	}
 	if result.AccessToken == "" {
@@ -179,11 +218,8 @@ func (l *LyricsApi) updateToken() error {
 
 type searchResult struct {
 	Tracks struct {
-		Items []struct {
-			ID   string `json:"id"`
-			Name string `json:"name"`
-		} `json:"items"`
-		Total int `json:"total"`
+		Items []*Track `json:"items"`
+		Total int      `json:"total"`
 	} `json:"tracks"`
 }
 
@@ -191,4 +227,51 @@ type tokenBody struct {
 	AccessToken string `json:"accessToken"`
 	ExpiresIn   int64  `json:"accessTokenExpirationTimestampMs"`
 	IsAnonymous bool   `json:"isAnonymous"`
+}
+
+type lrclibResult struct {
+	PlainLyrics  string `json:"plainLyrics"`
+	SyncedLyrics string `json:"syncedLyrics"`
+}
+
+func (l *lrclibResult) Parse() []LyricsLine {
+	if l.SyncedLyrics != "" {
+		return l.parceSynced()
+	}
+	if l.PlainLyrics != "" {
+		return l.parsePlain()
+	}
+	return nil
+}
+
+func (l *lrclibResult) parceSynced() []LyricsLine {
+	lines := strings.Split(l.SyncedLyrics, "\n")
+	result := make([]LyricsLine, len(lines))
+	for i, line := range lines {
+		result[i] = parseLrcLine(line)
+	}
+	return result
+}
+
+func (l *lrclibResult) parsePlain() []LyricsLine {
+	lines := strings.Split(l.PlainLyrics, "\n")
+	result := make([]LyricsLine, len(lines))
+	for i, line := range lines {
+		result[i] = LyricsLine{Words: line}
+	}
+	return result
+}
+
+func parseLrcLine(line string) LyricsLine {
+	// "[00:17.12] whatever"
+	if len(line) < 11 {
+		return LyricsLine{}
+	}
+	m, _ := strconv.Atoi(line[1:3])
+	s, _ := strconv.Atoi(line[4:6])
+	ms, _ := strconv.Atoi(line[7:9])
+	return LyricsLine{
+		Time:  m*60*1000 + s*1000 + ms*10,
+		Words: line[11:],
+	}
 }
