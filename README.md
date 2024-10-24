@@ -104,7 +104,7 @@ func main() {
 ### Deploy to Vercel
 
 1. https://vercel.com/docs/get-started
-2. Set "COOKIE" enviroment variable.
+2. Set "COOKIE" environment variable.
 
 ```bash
 # by name
