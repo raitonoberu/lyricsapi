@@ -22,11 +22,11 @@ func (l *LyricsLine) MarshalJSON() ([]byte, error) {
 }
 
 type Track struct {
-	ID         string    `json:"id"`
-	Album      Album     `json:"album"`
-	Artists    []Artists `json:"artists"`
-	DurationMs int       `json:"duration_ms"`
-	Name       string    `json:"name"`
+	ID       string    `json:"id"`
+	Album    Album     `json:"album"`
+	Artists  []Artists `json:"artists"`
+	Duration int       `json:"duration_ms"`
+	Name     string    `json:"name"`
 }
 
 type Artists struct {
@@ -40,11 +40,7 @@ type Album struct {
 }
 
 type StateResult struct {
-	Progress int       `json:"progress_ms"`
-	Playing  bool      `json:"is_playing"`
-	Item     *struct { // nil == nothing playing
-		ID       string `json:"id"`
-		Name     string `json:"name"`
-		Duration int    `json:"duration_ms"`
-	} `json:"item"`
+	Progress int    `json:"progress_ms"`
+	Playing  bool   `json:"is_playing"`
+	Item     *Track `json:"item"`
 }

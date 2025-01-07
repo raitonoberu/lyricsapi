@@ -149,7 +149,7 @@ func (l *LyricsApi) getFromLrclib(t *Track) ([]LyricsLine, error) {
 		"track_name":  {t.Name},
 		"artist_name": {t.Artists[0].Name}, // we probably should add all artists
 		"album_name":  {t.Album.Name},
-		"duration":    {strconv.Itoa(t.DurationMs / 1000)},
+		"duration":    {strconv.Itoa(t.Duration / 1000)},
 	}.Encode()
 	req, _ := http.NewRequest("GET", url, nil)
 	resp, err := l.Client.Do(req)
