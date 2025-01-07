@@ -16,11 +16,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/raitonoberu/lyricsapi/lyrics"
+	"github.com/raitonoberu/lyricsapi/spotify"
 )
 
 func main() {
-	api := lyrics.NewLyricsApi(`<YOUR COOKIE>`)
+	api := spotify.NewClient(`<YOUR COOKIE>`)
 	lyrics, _ := api.GetByName("Rick Astley Never Gonna Give You Up")
 	// Alternatively, specify the track id:
 	// lyrics, _ := api.GetByID("4uLU6hMCjMI75M1A2tKUQC")
@@ -28,7 +28,7 @@ func main() {
 		fmt.Println("Not found")
 		return
 	}
-	for _, line := range lyrics.Lyrics.Lines {
+	for _, line := range lyrics {
 		t := time.UnixMilli(int64(line.Time)).Format("04:05")
 		fmt.Println(t, line.Words)
 	}
@@ -68,7 +68,7 @@ func main() {
 01:51 Never gonna make you cry
 01:53 Never gonna say goodbye
 01:56 Never gonna tell a lie and hurt you
-02:01 
+02:01
 02:03 (Give you up)
 02:07 ♪
 02:09 (Ooh) Never gonna give, never gonna give
@@ -97,7 +97,7 @@ func main() {
 03:20 Never gonna run around and desert you
 03:25 Never gonna make you cry
 03:27 Never gonna say goodbye
-03:28 
+03:28
 ```
 </details>
 

@@ -1,4 +1,4 @@
-package lyrics
+package spotify
 
 import (
 	"encoding/json"
@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -27,36 +28,41 @@ const (
 	lrclibUserAgent = "lyricsapi v0.1.0 (https://github.com/raitonoberu/lyricsapi)"
 )
 
-func NewLyricsApi(cookie string) *LyricsApi {
-	return &LyricsApi{
-		Client: http.DefaultClient,
-		cookie: cookie,
+func NewClient(cookie string) *Client {
+	return &Client{
+		HttpClient: http.DefaultClient,
+		cookie:     cookie,
 	}
 }
 
-type LyricsApi struct {
-	Client *http.Client
+type Client struct {
+	HttpClient *http.Client
 
-	cookie    string
-	token     string
-	expiresIn time.Time
+	cookie string
+
+	token    string
+	tokenExp time.Time
+	tokenMu  sync.Mutex
 }
 
-func (l *LyricsApi) GetByName(query string) ([]LyricsLine, error) {
-	track, err := l.FindTrack(query)
+func (c *Client) GetByName(query string) ([]LyricsLine, error) {
+	track, err := c.FindTrack(query)
 	if err != nil {
 		return nil, err
 	}
-	if l.cookie != "" {
+	if c.cookie != "" {
 		// use spotify to get lyrics
 		// if you don't have a premium account, it will only be first 5 lines
-		return l.GetByID(track.ID)
+		return c.GetByID(track.ID)
 	}
-	return l.getFromLrclib(track)
+	// use lrclib to get lyrics by metadata
+	// DEPRECATED and will be removed!
+	return c.getFromLrclib(track)
 }
 
-func (l *LyricsApi) GetByID(spotifyID string) ([]LyricsLine, error) {
-	if err := l.checkToken(); err != nil {
+func (c *Client) GetByID(spotifyID string) ([]LyricsLine, error) {
+	token, err := c.getToken()
+	if err != nil {
 		return nil, err
 	}
 
@@ -69,9 +75,9 @@ func (l *LyricsApi) GetByID(spotifyID string) ([]LyricsLine, error) {
 		"app-platform":     {"WebPlayer"},
 		"sec-ch-ua-mobile": {"?0"},
 		"user-agent":       {userAgent},
-		"Authorization":    {"Bearer " + l.token},
+		"Authorization":    {"Bearer " + token},
 	}
-	resp, err := l.Client.Do(req)
+	resp, err := c.HttpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -90,8 +96,9 @@ func (l *LyricsApi) GetByID(spotifyID string) ([]LyricsLine, error) {
 	return result.Lyrics.Lines, nil
 }
 
-func (l *LyricsApi) FindTrack(query string) (*Track, error) {
-	if err := l.checkToken(); err != nil {
+func (c *Client) FindTrack(query string) (*Track, error) {
+	token, err := c.getToken()
+	if err != nil {
 		return nil, err
 	}
 
@@ -101,8 +108,8 @@ func (l *LyricsApi) FindTrack(query string) (*Track, error) {
 		"q":     {query},
 	}.Encode()
 	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("Authorization", "Bearer "+l.token)
-	resp, err := l.Client.Do(req)
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := c.HttpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -119,14 +126,15 @@ func (l *LyricsApi) FindTrack(query string) (*Track, error) {
 	return result.Tracks.Items[0], nil
 }
 
-func (l *LyricsApi) State() (*StateResult, error) {
-	if err := l.checkToken(); err != nil {
+func (c *Client) State() (*StateResult, error) {
+	token, err := c.getToken()
+	if err != nil {
 		return nil, err
 	}
 
 	req, _ := http.NewRequest("GET", stateUrl, nil)
-	req.Header.Set("Authorization", "Bearer "+l.token)
-	resp, err := l.Client.Do(req)
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := c.HttpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +152,7 @@ func (l *LyricsApi) State() (*StateResult, error) {
 	return result, nil
 }
 
-func (l *LyricsApi) getFromLrclib(t *Track) ([]LyricsLine, error) {
+func (c *Client) getFromLrclib(t *Track) ([]LyricsLine, error) {
 	url := lrclibUrl + url.Values{
 		"track_name":  {t.Name},
 		"artist_name": {t.Artists[0].Name}, // we probably should add all artists
@@ -152,7 +160,7 @@ func (l *LyricsApi) getFromLrclib(t *Track) ([]LyricsLine, error) {
 		"duration":    {strconv.Itoa(t.Duration / 1000)},
 	}.Encode()
 	req, _ := http.NewRequest("GET", url, nil)
-	resp, err := l.Client.Do(req)
+	resp, err := c.HttpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -166,18 +174,25 @@ func (l *LyricsApi) getFromLrclib(t *Track) ([]LyricsLine, error) {
 	return result.Parse(), nil
 }
 
-func (l *LyricsApi) checkToken() error {
-	if !l.tokenExpired() {
-		return nil
+func (c *Client) getToken() (string, error) {
+	c.tokenMu.Lock()
+	defer c.tokenMu.Unlock()
+
+	if !c.tokenExpired() {
+		return c.token, nil
 	}
-	return l.updateToken()
+
+	if err := c.refreshToken(); err != nil {
+		return "", err
+	}
+	return c.token, nil
 }
 
-func (l *LyricsApi) tokenExpired() bool {
-	return l.token == "" || time.Now().After(l.expiresIn)
+func (c *Client) tokenExpired() bool {
+	return c.token == "" || time.Now().After(c.tokenExp)
 }
 
-func (l *LyricsApi) updateToken() error {
+func (c *Client) refreshToken() error {
 	req, _ := http.NewRequest("GET", tokenUrl, nil)
 	req.Header = http.Header{
 		"referer":             {"https://open.spotify.com/"},
@@ -190,29 +205,29 @@ func (l *LyricsApi) updateToken() error {
 		"sec-fetch-site":      {"same-origin"},
 		"spotify-app-version": {"1.1.54.35.ge9dace1d"},
 		"user-agent":          {userAgent},
-		"cookie":              {l.cookie},
+		"cookie":              {c.cookie},
 	}
-	resp, err := l.Client.Do(req)
+	resp, err := c.HttpClient.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
-	result := &tokenBody{}
+	result := &tokenResult{}
 	err = json.NewDecoder(resp.Body).Decode(result)
 	if err != nil {
 		return err
 	}
 
-	if l.cookie != "" && result.IsAnonymous {
+	if c.cookie != "" && result.IsAnonymous {
 		return ErrInvalidCookie
 	}
 	if result.AccessToken == "" {
 		return ErrNoToken
 	}
 
-	l.token = result.AccessToken
-	l.expiresIn = time.Unix(0, result.ExpiresIn*int64(time.Millisecond))
+	c.token = result.AccessToken
+	c.tokenExp = time.Unix(0, result.ExpiresIn*int64(time.Millisecond))
 	return nil
 }
 
@@ -223,7 +238,13 @@ type searchResult struct {
 	} `json:"tracks"`
 }
 
-type tokenBody struct {
+type lyricsResult struct {
+	Lyrics struct {
+		Lines []LyricsLine `json:"lines"`
+	} `json:"lyrics"`
+}
+
+type tokenResult struct {
 	AccessToken string `json:"accessToken"`
 	ExpiresIn   int64  `json:"accessTokenExpirationTimestampMs"`
 	IsAnonymous bool   `json:"isAnonymous"`

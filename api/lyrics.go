@@ -3,21 +3,22 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
 
-	"github.com/raitonoberu/lyricsapi/lyrics"
+	"github.com/raitonoberu/lyricsapi/spotify"
 )
 
-var api = lyrics.NewLyricsApi(os.Getenv("COOKIE"))
+var api = spotify.NewClient(os.Getenv("COOKIE"))
 
 func Lyrics(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 
-	var lyrics []lyrics.LyricsLine
+	var lyrics []spotify.LyricsLine
 	var err error
 	if id := query.Get("id"); len(id) != 0 {
 		log.Println("[INFO] Getting lyrics for ID:", id)
@@ -40,16 +41,26 @@ func Lyrics(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func writeJson(w http.ResponseWriter, lyrics []lyrics.LyricsLine) {
+func writeJson(w io.Writer, lyrics []spotify.LyricsLine) {
 	if lyrics == nil {
 		w.Write([]byte("[]"))
 		return
 	}
+
+	type alias struct {
+		Time  int    `json:"time"`
+		Words string `json:"words"`
+	}
+	lines := make([]alias, len(lyrics))
+	for i, l := range lyrics {
+		lines[i] = alias(l)
+	}
+
 	// [{"time":1000,"words":"words"}, ...]
-	json.NewEncoder(w).Encode(lyrics)
+	json.NewEncoder(w).Encode(lines)
 }
 
-func writeLrc(w http.ResponseWriter, lyrics []lyrics.LyricsLine) {
+func writeLrc(w io.Writer, lyrics []spotify.LyricsLine) {
 	if lyrics == nil {
 		w.Write([]byte(""))
 		return
@@ -66,7 +77,7 @@ func writeLrc(w http.ResponseWriter, lyrics []lyrics.LyricsLine) {
 func writeHeader(
 	w http.ResponseWriter,
 	query url.Values,
-	lyrics []lyrics.LyricsLine,
+	lyrics []spotify.LyricsLine,
 	err error,
 ) {
 	if query.Get("lrc") == "1" {
