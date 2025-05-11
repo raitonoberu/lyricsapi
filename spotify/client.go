@@ -1,6 +1,7 @@
 package spotify
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -126,6 +127,9 @@ func (c *Client) FindTrack(query string) (*Track, error) {
 	}
 	defer resp.Body.Close()
 
+	buf := bytes.Buffer{}
+	reader := io.TeeReader(resp.Body, &buf)
+
 	type responseBody struct {
 		Tracks struct {
 			Items []*Track `json:"items"`
@@ -134,9 +138,10 @@ func (c *Client) FindTrack(query string) (*Track, error) {
 	}
 
 	var response responseBody
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+	if err := json.NewDecoder(reader).Decode(&response); err != nil {
 		return nil, err
 	}
+	fmt.Println(buf.String())
 	if response.Tracks.Total == 0 {
 		return nil, nil
 	}
