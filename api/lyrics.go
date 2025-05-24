@@ -10,22 +10,33 @@ import (
 	"os"
 	"strings"
 
+	"github.com/raitonoberu/lyricsapi/itunes"
+	"github.com/raitonoberu/lyricsapi/lrclib"
+	"github.com/raitonoberu/lyricsapi/lyrics"
 	"github.com/raitonoberu/lyricsapi/spotify"
 )
 
-var api = spotify.NewClient(os.Getenv("COOKIE"))
+var spotifyApi = spotify.NewClient(os.Getenv("COOKIE"))
 
 func Lyrics(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 
-	var lyrics []spotify.LyricsLine
+	var lyrics []lyrics.Line
 	var err error
 	if id := query.Get("id"); len(id) != 0 {
 		log.Println("[INFO] Getting lyrics for ID:", id)
-		lyrics, err = api.GetByID(id)
+		lyrics, err = spotifyApi.GetByID(id)
 	} else if name := query.Get("name"); len(name) != 0 {
 		log.Println("[INFO] Getting lyrics for query:", name)
-		lyrics, err = api.GetByName(name)
+		var track *itunes.Track
+		track, err = itunes.Search(name)
+		if track != nil {
+			lyrics, err = lrclib.GetLyrics(lrclib.GetLyricsRequest{
+				TrackName:  track.TrackName,
+				ArtistName: track.ArtistName,
+				AlbumName:  track.CollectionName,
+			})
+		}
 	}
 
 	if err != nil {
@@ -41,26 +52,16 @@ func Lyrics(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func writeJson(w io.Writer, lyrics []spotify.LyricsLine) {
+func writeJson(w io.Writer, lyrics []lyrics.Line) {
 	if lyrics == nil {
 		w.Write([]byte("[]"))
 		return
 	}
-
-	type alias struct {
-		Time  int    `json:"time"`
-		Words string `json:"words"`
-	}
-	lines := make([]alias, len(lyrics))
-	for i, l := range lyrics {
-		lines[i] = alias(l)
-	}
-
 	// [{"time":1000,"words":"words"}, ...]
-	json.NewEncoder(w).Encode(lines)
+	json.NewEncoder(w).Encode(lyrics)
 }
 
-func writeLrc(w io.Writer, lyrics []spotify.LyricsLine) {
+func writeLrc(w io.Writer, lyrics []lyrics.Line) {
 	if lyrics == nil {
 		w.Write([]byte(""))
 		return
@@ -77,7 +78,7 @@ func writeLrc(w io.Writer, lyrics []spotify.LyricsLine) {
 func writeHeader(
 	w http.ResponseWriter,
 	query url.Values,
-	lyrics []spotify.LyricsLine,
+	lyrics []lyrics.Line,
 	err error,
 ) {
 	if query.Get("lrc") == "1" {

@@ -7,10 +7,10 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
+
+	"github.com/raitonoberu/lyricsapi/lyrics"
 )
 
 var (
@@ -23,11 +23,6 @@ const (
 	searchUrl = "https://api.spotify.com/v1/search"
 	stateUrl  = "https://api.spotify.com/v1/me/player/currently-playing"
 	userAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0"
-)
-
-const (
-	lrclibUrl       = "https://lrclib.net/api/get?"
-	lrclibUserAgent = "lyricsapi v0.1.0 (https://github.com/raitonoberu/lyricsapi)"
 )
 
 func NewClient(cookie string) *Client {
@@ -47,7 +42,7 @@ type Client struct {
 	tokenMu  sync.Mutex
 }
 
-func (c *Client) GetByName(query string) ([]LyricsLine, error) {
+func (c *Client) GetByName(query string) ([]lyrics.Line, error) {
 	track, err := c.FindTrack(query)
 	if err != nil {
 		return nil, err
@@ -56,18 +51,10 @@ func (c *Client) GetByName(query string) ([]LyricsLine, error) {
 	if track == nil {
 		return nil, nil
 	}
-
-	if c.cookie != "" {
-		// use spotify to get lyrics
-		// if you don't have a premium account, it will only be first 5 lines
-		return c.GetByID(track.ID)
-	}
-	// use lrclib to get lyrics by metadata
-	// DEPRECATED and will be removed!
-	return c.getFromLrclib(*track)
+	return c.GetByID(track.ID)
 }
 
-func (c *Client) GetByID(spotifyID string) ([]LyricsLine, error) {
+func (c *Client) GetByID(spotifyID string) ([]lyrics.Line, error) {
 	token, err := c.getToken()
 	if err != nil {
 		return nil, err
@@ -104,7 +91,12 @@ func (c *Client) GetByID(spotifyID string) ([]LyricsLine, error) {
 		}
 		return nil, err
 	}
-	return response.Lyrics.Lines, nil
+
+	lines := make([]lyrics.Line, len(response.Lyrics.Lines))
+	for i, l := range response.Lyrics.Lines {
+		lines[i] = lyrics.Line(l)
+	}
+	return lines, nil
 }
 
 func (c *Client) FindTrack(query string) (*Track, error) {
@@ -170,28 +162,6 @@ func (c *Client) State() (*StateResult, error) {
 	return &response, nil
 }
 
-func (c *Client) getFromLrclib(t Track) ([]LyricsLine, error) {
-	url := lrclibUrl + url.Values{
-		"track_name":  {t.Name},
-		"artist_name": {t.Artists[0].Name},
-		"album_name":  {t.Album.Name},
-		"duration":    {strconv.Itoa(t.Duration / 1000)},
-	}.Encode()
-	req, _ := http.NewRequest("GET", url, nil)
-	resp, err := c.HttpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	var response lrclibResponse
-	err = json.NewDecoder(resp.Body).Decode(&response)
-	if err != nil {
-		return nil, err
-	}
-	return response.Parse(), nil
-}
-
 func (c *Client) getToken() (string, error) {
 	c.tokenMu.Lock()
 	defer c.tokenMu.Unlock()
@@ -208,51 +178,4 @@ func (c *Client) getToken() (string, error) {
 
 func (c *Client) tokenExpired() bool {
 	return c.token == "" || time.Now().After(c.tokenExp)
-}
-
-type lrclibResponse struct {
-	PlainLyrics  string `json:"plainLyrics"`
-	SyncedLyrics string `json:"syncedLyrics"`
-}
-
-func (l *lrclibResponse) Parse() []LyricsLine {
-	if l.SyncedLyrics != "" {
-		return l.parceSynced()
-	}
-	if l.PlainLyrics != "" {
-		return l.parsePlain()
-	}
-	return nil
-}
-
-func (l *lrclibResponse) parceSynced() []LyricsLine {
-	lines := strings.Split(l.SyncedLyrics, "\n")
-	result := make([]LyricsLine, len(lines))
-	for i, line := range lines {
-		result[i] = parseLrcLine(line)
-	}
-	return result
-}
-
-func (l *lrclibResponse) parsePlain() []LyricsLine {
-	lines := strings.Split(l.PlainLyrics, "\n")
-	result := make([]LyricsLine, len(lines))
-	for i, line := range lines {
-		result[i] = LyricsLine{Words: line}
-	}
-	return result
-}
-
-func parseLrcLine(line string) LyricsLine {
-	// "[00:17.12] whatever"
-	if len(line) < 11 {
-		return LyricsLine{}
-	}
-	m, _ := strconv.Atoi(line[1:3])
-	s, _ := strconv.Atoi(line[4:6])
-	ms, _ := strconv.Atoi(line[7:9])
-	return LyricsLine{
-		Time:  m*60*1000 + s*1000 + ms*10,
-		Words: line[11:],
-	}
 }
