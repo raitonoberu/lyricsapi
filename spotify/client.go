@@ -15,7 +15,8 @@ import (
 
 var (
 	ErrInvalidCookie = errors.New("invalid cookie provided")
-	ErrNoToken       = errors.New("could not get token")
+	ErrNoAccessToken = errors.New("could not get access token")
+	ErrNoClientToken = errors.New("could not get client token")
 )
 
 const (
@@ -37,9 +38,15 @@ type Client struct {
 
 	cookie string
 
-	token    string
-	tokenExp time.Time
-	tokenMu  sync.Mutex
+	clientId string
+
+	accessToken    string
+	accessTokenExp time.Time
+	accessTokenMu  sync.Mutex
+
+	clientToken    string
+	clientTokenExp time.Time
+	clientTokenMu  sync.Mutex
 }
 
 func (c *Client) GetByName(query string) ([]lyrics.Line, error) {
@@ -55,7 +62,11 @@ func (c *Client) GetByName(query string) ([]lyrics.Line, error) {
 }
 
 func (c *Client) GetByID(spotifyID string) ([]lyrics.Line, error) {
-	token, err := c.getToken()
+	accessToken, err := c.getAccessToken()
+	if err != nil {
+		return nil, err
+	}
+	clientToken, err := c.getClientToken()
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +79,8 @@ func (c *Client) GetByID(spotifyID string) ([]lyrics.Line, error) {
 		"app-platform":        {"WebPlayer"},
 		"spotify-app-version": {"1.2.61.20.g3b4cd5b2"},
 		"user-agent":          {userAgent},
-		"Authorization":       {"Bearer " + token},
+		"Authorization":       {"Bearer " + accessToken},
+		"client-token":        {clientToken},
 	}
 	resp, err := c.HttpClient.Do(req)
 	if err != nil {
@@ -100,7 +112,11 @@ func (c *Client) GetByID(spotifyID string) ([]lyrics.Line, error) {
 }
 
 func (c *Client) FindTrack(query string) (*Track, error) {
-	token, err := c.getToken()
+	accessToken, err := c.getAccessToken()
+	if err != nil {
+		return nil, err
+	}
+	clientToken, err := c.getClientToken()
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +127,8 @@ func (c *Client) FindTrack(query string) (*Track, error) {
 		"q":     {query},
 	}.Encode()
 	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("client-token", clientToken)
 	resp, err := c.HttpClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -136,15 +153,18 @@ func (c *Client) FindTrack(query string) (*Track, error) {
 }
 
 func (c *Client) State() (*StateResult, error) {
-	token, err := c.getToken()
+	accessToken, err := c.getAccessToken()
+	if err != nil {
+		return nil, err
+	}
+	clientToken, err := c.getClientToken()
 	if err != nil {
 		return nil, err
 	}
 
 	req, _ := http.NewRequest("GET", stateUrl, nil)
-	req.Header = http.Header{
-		"Authorization": {"Bearer " + token},
-	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("client-token", clientToken)
 	resp, err := c.HttpClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -162,20 +182,38 @@ func (c *Client) State() (*StateResult, error) {
 	return &response, nil
 }
 
-func (c *Client) getToken() (string, error) {
-	c.tokenMu.Lock()
-	defer c.tokenMu.Unlock()
+func (c *Client) getAccessToken() (string, error) {
+	c.accessTokenMu.Lock()
+	defer c.accessTokenMu.Unlock()
 
-	if !c.tokenExpired() {
-		return c.token, nil
+	if !c.accessTokenExpired() {
+		return c.accessToken, nil
 	}
 
-	if err := c.refreshToken(); err != nil {
+	if err := c.refreshAccessToken(); err != nil {
 		return "", fmt.Errorf("failed to refresh token: %w", err)
 	}
-	return c.token, nil
+	return c.accessToken, nil
 }
 
-func (c *Client) tokenExpired() bool {
-	return c.token == "" || time.Now().After(c.tokenExp)
+func (c *Client) accessTokenExpired() bool {
+	return c.accessToken == "" || time.Now().After(c.accessTokenExp)
+}
+
+func (c *Client) getClientToken() (string, error) {
+	c.clientTokenMu.Lock()
+	defer c.clientTokenMu.Unlock()
+
+	if !c.clientTokenExpired() {
+		return c.clientToken, nil
+	}
+
+	if err := c.refreshClientToken(); err != nil {
+		return "", fmt.Errorf("failed to refresh token: %w", err)
+	}
+	return c.clientToken, nil
+}
+
+func (c *Client) clientTokenExpired() bool {
+	return c.clientToken == "" || time.Now().After(c.clientTokenExp)
 }
